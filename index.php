@@ -70,9 +70,8 @@ if(isset($_POST['data'])){ // gestion des post
   
    if($ret['input']['funct']=='connexion'){
     if( // normalement, ça devrait être en bdd !
-        ( $ret['input']['login']=='hdf' && $ret['input']['password']=='hdf' )
-     || ( $ret['input']['login']=='tcz' && $ret['input']['password']=='tcz' )
-     || ( $ret['input']['login']=='ese' && $ret['input']['password']=='ese' )
+        ( $ret['input']['login']=='xyz' && $ret['input']['password']=='xyz' )
+     || ( $ret['input']['login']=='abc' && $ret['input']['password']=='abc' )
     ){
      $ret['jsonformul1']=$jsonformul1;
      $ret['status']='OK';
