@@ -2,6 +2,9 @@
 // /todo
 // pouvoir lire les données sauvegardées du serveur quand on est connecté
 // todo/
+
+$version='20190916-02';
+
 session_start();
 if(get_magic_quotes_gpc()==1){
  $_GET    =hmq1($_GET);
@@ -70,17 +73,25 @@ if(isset($_POST['data'])){ // gestion des post
   
    if($ret['input']['funct']=='connexion'){
     if( // normalement, ça devrait être en bdd !
-        ( $ret['input']['login']=='xyz' && $ret['input']['password']=='xyz' )
-     || ( $ret['input']['login']=='abc' && $ret['input']['password']=='abc' )
+        ( $ret['input']['login']=='abc' && $ret['input']['password']=='abc' )
+     || ( $ret['input']['login']=='def' && $ret['input']['password']=='def' )
     ){
      $ret['jsonformul1']=$jsonformul1;
      $ret['status']='OK';
      $_SESSION['logged']=$ret['input']['login'];
+     $ret['version']=$version;     
     }
    }
 
 
+   if($ret['input']['funct']=='getversion'){
+    $ret['status']='OK';
+    $ret['version']=$version;     
+   }
+
+
    if($ret['input']['funct']=='deconnexion'){
+    $ret['version']=$version;
     unset($_SESSION['logged']);
     $ret['status']='OK';
    }
@@ -89,7 +100,10 @@ if(isset($_POST['data'])){ // gestion des post
    if($ret['input']['funct']=='verifierConnexion'){
     if(isset($_SESSION['logged'])){
      $ret['login']=$_SESSION['logged'];
+     $ret['version']=$version;
      $ret['status']='OK';
+    }else{
+     $ret['version']=$version;
     }
    }
 
@@ -98,6 +112,7 @@ if(isset($_POST['data'])){ // gestion des post
      $ret['jsonformul1']=$jsonformul1;
      $ret['login'] =$_SESSION['logged'];
      $ret['status']='OK';
+     $ret['version']=$version;
     }
    }
 
@@ -136,7 +151,8 @@ if(isset($_POST['data'])){ // gestion des post
 
 ?>
 <!doctype html>
-<html lang="fr" manifest="formulaire.appcache" >
+<html lang="fr" manifest="formulaire.appcache">
+<!-- html lang="fr" -->
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -164,7 +180,7 @@ input{background-color:#cdf2ff;padding:5px;border:1px #eee inset;font-family: ve
   <div id="menu" style="position:fixed;border:1px #eee solid;height:50px;width:100%;background:white;" ></div>    
   <div id="content" style="padding:50px 0 0 0;"></div>
 <script type="text/javascript">
-function myObj1(objname){
+function myObj1(objname,version){
  "use strict";
  var onLineStatus1=false;
  var jsonformul1=null;
@@ -176,6 +192,15 @@ function myObj1(objname){
  var chunkTimeout=150;
  var chunkSize=0;  // calculé dynamiquement : contient le nombre de formulaires à envoyer par appel ajax
  var chunkCount=0; // calculé dynamiquement : le nombre d'appels ajax
+ 
+ //=====================================================================================================================
+ function homev(){
+  if(onLineStatus1){
+   getversion();
+  }else{
+   home();
+  }
+ }
  //=====================================================================================================================
  function home(){
   pageStatus='';
@@ -198,6 +223,7 @@ function myObj1(objname){
      updateMenu();
      updatePage();
     }else{
+     console.log('jsonRet=',jsonRet);
      home();
     }
    }catch(e){
@@ -280,7 +306,6 @@ function myObj1(objname){
    alert('Problème !\n '+retTest.message+'\n\n');
    return;
   }
-  
   try{
    var dataformul1=localStorage.getItem('data_formulaires_'+id_formulaire);
    if(dataformul1==null){
@@ -293,7 +318,44 @@ function myObj1(objname){
     localStorage.setItem('data_formulaires_'+id_formulaire , JSON.stringify(dataformul1));
    }
   }catch(e){}
-  home();
+  if(onLineStatus1){
+   getversion();
+  }else{
+   home();
+  }
+ }
+ //=====================================================================================================================
+ function getversion(){
+  var r = new XMLHttpRequest();
+  r.open("POST",'index.php?getversion',true);
+  r.timeout=6000;
+  r.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
+  r.onreadystatechange = function () {
+   if (r.readyState != 4 || r.status != 200) return;
+   try{
+    var jsonRet=JSON.parse(r.responseText);
+    if(jsonRet.status=='OK'){
+     if(jsonRet.version>version){
+      setTimeout(function(){document.location=String(document.location);},500);
+     }else{
+      home();
+     }
+    }
+   }catch(e){
+    console.error(e);
+    home();
+   }
+  };
+  r.onerror=function(e){
+//   console.error('e=',e); // si on est offline, ce n'est pas une erreur
+   home();
+  }
+  var data={
+   funct          : 'getversion',
+  }
+  r.send('data='+encodeURIComponent(JSON.stringify(data)));
+  
+  
  }
  //=====================================================================================================================
  function saisir(id_formulaire){
@@ -701,7 +763,13 @@ function myObj1(objname){
       t+='<button onclick="'+objname+'.voir('+elem+')">Voir les données non synchronisées</button>';
      }
     }
+    if(loginName1!==''){
+     t+='<hr /><button onclick="'+objname+'.chargerMesFormulaires()">recharger mes formulaires</button>';
+    }
    }
+   
+   
+   
    var derniereConnexion=localStorage.getItem('derniereConnexion');
    if(derniereConnexion!==null && loginName1=='' ){
      var maintenant=new Date();
@@ -725,6 +793,7 @@ function myObj1(objname){
       t+='<hr />Votre dernière connexion a été faite il y a '+(jours>0?jours + ' jour(s) ':'')+' '+(heures>0?heures + ' heure(s) ':'')+' '+(minutes>0?minutes + ' minute(s) ':'');
      }
    }
+   t+='<hr /><span style="font-size:0.7em;">version: '+version.substr(4,100)+'</span>';
    
    
    document.getElementById('content').innerHTML=t;
@@ -765,7 +834,7 @@ function myObj1(objname){
  //=====================================================================================================================
  function updateMenu(){
   if(onLineStatus1){
-   var t='<button onclick="'+objname+'.home()">🏠</button><span style="color:green;">&nbsp;Online&nbsp;</span>';
+   var t='<button onclick="'+objname+'.homev()">🏠</button><span style="color:green;">&nbsp;Online&nbsp;</span>';
    if(loginName1!==''){
     t+='<button onclick="'+objname+'.deconnexion()" style="float:right;">déconnexion</button>'
    }else{
@@ -801,6 +870,11 @@ function myObj1(objname){
     if(jsonRet.status=='OK'){
      loginName1='';
      pageStatus='';
+     try{
+      if(jsonRet.version>version){
+       setTimeout(function(){document.location=String(document.location);},500);
+      }
+     }catch(e){}
      updateMenu();
      updatePage();
     }else{
@@ -964,6 +1038,7 @@ function myObj1(objname){
    supprimer               : function(i,j){supprimer(i,j);},
    voir                    : function(i){voir(i);},
    enregistrer             : function(i){enregistrer(i);},
+   homev                   : function(){homev();},
    home                    : function(){home();},
    saisir                  : function(i){saisir(i);},
    chargerMesFormulaires   : function(){chargerMesFormulaires();},
@@ -974,7 +1049,7 @@ function myObj1(objname){
  };  
 }
 // on commence le programme ici ( et il était temps :-)
-var myObj=new myObj1('myObj');
+var myObj=new myObj1('myObj','<?php echo $version;?>');
 //=====================================================================================================================
 </script>
 <?php
