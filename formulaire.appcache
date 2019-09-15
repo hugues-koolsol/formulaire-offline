@@ -1,0 +1,8 @@
+CACHE MANIFEST
+# 20190915-01:
+# Explicitly cached 'master entries'.
+CACHE:
+index.php
+# Resources that require the user to be online.
+NETWORK:
+*
